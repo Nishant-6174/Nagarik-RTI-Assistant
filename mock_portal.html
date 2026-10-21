@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock Govt RTI Portal</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 40px; background: #f4f4f9; }
+        .container { background: white; padding: 20px; border-radius: 8px; max-width: 500px; margin: auto; }
+        input, textarea { width: 100%; margin-bottom: 15px; padding: 10px; }
+        .captcha-box { background: #eee; padding: 10px; letter-spacing: 5px; font-weight: bold; font-family: monospace; display: inline-block; margin-bottom: 10px;}
+        button { background: #28a745; color: white; border: none; padding: 10px 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Submit RTI Application</h2>
+        
+        <label>Public Authority</label>
+        <input type="text" id="department" placeholder="Department Name">
+        
+        <label>RTI Request Text</label>
+        <textarea id="rti_text" rows="5"></textarea>
+        
+        <label>Security CAPTCHA</label><br>
+        <div id="captcha_text" class="captcha-box">XR79ZQ</div>
+        <input type="text" id="captcha_input" placeholder="Type CAPTCHA here">
+        
+        <button id="pay_submit" onclick="submitForm()">Pay Rs 10 & Submit</button>
+        
+        <div id="success_area" style="display:none; margin-top: 20px; padding: 15px; background: #d4edda; color: #155724;">
+            ✅ Payment Successful! <br>
+            Registration ID: <strong id="success_reg_number">RTI-GOV-2026-9884</strong>
+        </div>
+    </div>
+
+    <script>
+        function submitForm() {
+            let input = document.getElementById('captcha_input').value;
+            let code = document.getElementById('captcha_text').innerText;
+            if(input === code) {
+                document.getElementById('success_area').style.display = 'block';
+            } else {
+                alert("CAPTCHA Verification Failed. Try again.");
+            }
+        }
+    </script>
+</body>
+</html>
