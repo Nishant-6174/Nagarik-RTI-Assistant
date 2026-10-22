@@ -61,7 +61,7 @@ def run_decision_rules(info_needed: str, dept: str, state: str) -> AgentDecision
         try:
             client = genai.Client(
                 api_key=api_key,
-                http_options=types.HttpOptions(timeout=5000)
+                http_options=types.HttpOptions(timeout=20000)
             )
             
             prompt = f"""
@@ -79,7 +79,7 @@ def run_decision_rules(info_needed: str, dept: str, state: str) -> AgentDecision
             """
             
             response = client.models.generate_content(
-                model='gemini-1.5-flash',
+                model='gemini-2.5-flash',
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",

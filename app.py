@@ -89,6 +89,68 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
+# ==========================================
+# 1.5 SPLIT-SCREEN CITIZEN AUTHENTICATION
+# ==========================================
+# Mock database for hackathon judges
+DEMO_USERS = {
+    "citizen01": "RTI@2026",
+    "demo_user": "hackathon",
+    "auditor_99": "secure123",
+    "admin": "admin_pass"
+}
+
+if 'logged_in' not in st.session_state:
+    st.session_state['logged_in'] = False
+
+if not st.session_state['logged_in']:
+    # Add some vertical space to center the layout
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    
+    # Create the Left (Branding) and Right (Login) columns
+    col_brand, col_login = st.columns([1.2, 1], gap="large")
+    
+    # --- LEFT SIDE: Organization Branding ---
+    with col_brand:
+        st.markdown("""
+        <div style='padding: 20px; text-align: left;'>
+            <img src='https://cdn-icons-png.flaticon.com/512/8297/8297075.png' width='120' style='margin-bottom: 20px; filter: drop-shadow(0px 0px 10px rgba(0, 198, 255, 0.5));'>
+            <h1 style='color: white; font-weight: 800; font-size: 3.5rem; margin-bottom: 10px; line-height: 1.1;'>Nagarik RTI<br>Portal</h1>
+            <h4 style='color: #00c6ff; font-weight: 400; letter-spacing: 1px;'>Empowering Citizens. Ensuring Transparency.</h4>
+            <p style='color: #8a94a6; margin-top: 20px; font-size: 1.1rem;'>Authorized Access Only. Please log in using your verified citizen or auditor credentials to access the AI routing engine.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    # --- RIGHT SIDE: Secure Login Form ---
+    with col_login:
+        # Wrap the form in a Streamlit container to inherit our glassmorphism CSS
+        with st.container(border=True):
+            st.markdown("<h3 style='color: white; margin-bottom: 20px;'>🔒 Secure Login</h3>", unsafe_allow_html=True)
+            
+            with st.form("auth_form"):
+                user_id = st.text_input("User ID", placeholder="e.g., citizen01")
+                password = st.text_input("Password", type="password", placeholder="••••••••")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                submit_login = st.form_submit_button("Authenticate 🚀", type="primary", use_container_width=True)
+                
+                if submit_login:
+                    if user_id in DEMO_USERS and DEMO_USERS[user_id] == password:
+                        st.session_state['logged_in'] = True
+                        st.session_state['user_id'] = user_id
+                        st.rerun()  # Instantly reloads the page to show the main app
+                    else:
+                        st.error("❌ Invalid User ID or Password. Please try again.")
+    
+    # --- HELPER TEXT FOR JUDGES ---
+    st.markdown("<br><hr style='border-color: #2a344a;'>", unsafe_allow_html=True)
+    st.caption("🛠️ **HACKATHON DEMO CREDENTIALS:**")
+    st.caption("1. `citizen01` / `RTI@2026` | 2. `demo_user` / `hackathon` | 3. `auditor_99` / `secure123`")
+    
+    # CRITICAL: This stops the rest of the code from running if not logged in!
+    st.stop() 
+
+# --- (The rest of your code, like render_3d_hero(), goes below here) ---
 # 2. 3D HERO COMPONENT (GYROSCOPE LOGO)
 # ==========================================
 def render_3d_hero():
