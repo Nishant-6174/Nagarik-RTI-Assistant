@@ -2,6 +2,7 @@ import sys
 import asyncio
 import io
 import base64
+import random
 from pathlib import Path
 import streamlit as st
 
@@ -11,7 +12,6 @@ if sys.platform == 'win32':
 
 import database as db
 from llm_agent import run_decision_rules
-from mock_portal import file_rti_on_mock_portal
 
 # ReportLab imports for generating formal RTI PDFs
 from reportlab.lib.pagesizes import letter
@@ -21,7 +21,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 # ==========================================
 # 1. PAGE CONFIG & ADVANCED GLASSMORPHIC CSS
 # ==========================================
-st.set_page_config(page_title="Nagarik RTI Engine", layout="centered", page_icon="🏛️",initial_sidebar_state="expanded")
+st.set_page_config(page_title="Nagarik RTI Engine", layout="centered", page_icon="🏛️", initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
@@ -85,6 +85,20 @@ st.markdown("""
         padding: 20px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
+    
+    /* CAPTCHA Display Box Styling */
+    .captcha-display {
+        background: #1e293b;
+        border: 2px dashed #00c6ff;
+        padding: 12px;
+        text-align: center;
+        font-size: 1.4rem;
+        font-weight: 900;
+        letter-spacing: 6px;
+        color: #38bdf8;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -98,21 +112,8 @@ def render_3d_hero():
     <head>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
         <style>
-            /* Force absolute transparency at the HTML/Body level */
-            body, html { 
-                margin: 0; 
-                padding: 0; 
-                overflow: hidden; 
-                background: transparent !important; 
-                background-color: transparent !important;
-            }
-            #canvas-container { 
-                width: 100vw; 
-                height: 160px; 
-                display: flex; 
-                justify-content: center; 
-                background: transparent !important; 
-            }
+            body, html { margin: 0; padding: 0; overflow: hidden; background: transparent !important; }
+            #canvas-container { width: 100vw; height: 160px; display: flex; justify-content: center; background: transparent !important; }
         </style>
     </head>
     <body>
@@ -121,71 +122,40 @@ def render_3d_hero():
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(45, window.innerWidth / 160, 0.1, 1000);
             camera.position.z = 5.5; 
-            
-            // alpha: true and setClearColor(0,0) wipe the white background
             const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
             renderer.setClearColor( 0x000000, 0 ); 
             renderer.setSize(window.innerWidth, 160);
             document.getElementById('canvas-container').appendChild(renderer.domElement);
             
-            // Lighting setup
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
             const pointLight = new THREE.PointLight(0x00f2fe, 3, 50);
             pointLight.position.set(5, 5, 5);
             scene.add(pointLight);
 
-            // --- AI DATA GYROSCOPE ---
-            
-            // 1. Central AI Core
             const coreGeo = new THREE.SphereGeometry(0.5, 32, 32);
-            const coreMat = new THREE.MeshStandardMaterial({
-                color: 0xffaa00, 
-                roughness: 0.2, 
-                metalness: 0.8,
-                emissive: 0xffaa00,
-                emissiveIntensity: 0.6
-            });
+            const coreMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, roughness: 0.2, metalness: 0.8, emissive: 0xffaa00, emissiveIntensity: 0.6 });
             const core = new THREE.Mesh(coreGeo, coreMat);
             scene.add(core);
 
-            // 2. Inner Routing Ring
             const ring1Geo = new THREE.TorusGeometry(1.0, 0.04, 16, 100);
-            const ring1Mat = new THREE.MeshStandardMaterial({
-                color: 0x00f2fe, 
-                roughness: 0.1, 
-                metalness: 0.9,
-                emissive: 0x00f2fe,
-                emissiveIntensity: 0.8
-            });
+            const ring1Mat = new THREE.MeshStandardMaterial({ color: 0x00f2fe, roughness: 0.1, metalness: 0.9, emissive: 0x00f2fe, emissiveIntensity: 0.8 });
             const ring1 = new THREE.Mesh(ring1Geo, ring1Mat);
             ring1.rotation.x = Math.PI / 2;
             scene.add(ring1);
 
-            // 3. Outer Routing Ring
             const ring2Geo = new THREE.TorusGeometry(1.5, 0.05, 16, 100);
-            const ring2Mat = new THREE.MeshStandardMaterial({
-                color: 0x0072ff, 
-                roughness: 0.2, 
-                metalness: 0.8,
-                emissive: 0x0072ff,
-                emissiveIntensity: 0.4
-            });
+            const ring2Mat = new THREE.MeshStandardMaterial({ color: 0x0072ff, roughness: 0.2, metalness: 0.8, emissive: 0x0072ff, emissiveIntensity: 0.4 });
             const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
             scene.add(ring2);
 
-            // Animation Loop
             function animate() {
                 requestAnimationFrame(animate);
-                
                 ring1.rotation.y += 0.03;
                 ring1.rotation.x += 0.015;
-                
                 ring2.rotation.y -= 0.01;
                 ring2.rotation.z -= 0.02;
-                
                 core.rotation.y += 0.005;
-                
                 renderer.render(scene, camera);
             }
             animate();
@@ -193,15 +163,11 @@ def render_3d_hero():
     </body>
     </html>
     """
-    
     b64_html = base64.b64encode(html_code.encode('utf-8')).decode('utf-8')
-    st.markdown(
-        f'<iframe src="data:text/html;base64,{b64_html}" width="100%" height="170" style="border:none; overflow:hidden; background: transparent !important; background-color: transparent !important;" allowtransparency="true"></iframe>',
-        unsafe_allow_html=True
-    )
+    st.markdown(f'<iframe src="data:text/html;base64,{b64_html}" width="100%" height="170" style="border:none; overflow:hidden; background: transparent !important;" allowtransparency="true"></iframe>', unsafe_allow_html=True)
 
 # ==========================================
-# 3. HELPER FUNCTIONS
+# 3. HELPER FUNCTIONS & DB
 # ==========================================
 db.init_db()
 
@@ -227,6 +193,10 @@ def generate_rti_pdf(authority: str, draft_text: str, stable_id: str) -> bytes:
     buffer.seek(0)
     return buffer.getvalue()
 
+def generate_random_captcha():
+    chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return "".join(random.choices(chars, k=5))
+
 # ==========================================
 # 4. SIDEBAR PRESETS
 # ==========================================
@@ -234,7 +204,6 @@ with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/8297/8297075.png", width=60)
     st.markdown("## Nagarik RTI\n**AI Automation Engine**")
     st.markdown("---")
-    
     st.caption("⚡ QUICK TEST PRESETS")
     if st.button("🏗️ TC1: Valid RTI (Records)", use_container_width=True):
         st.session_state.update({"info": "Provide expenditure reports and contractor invoices for public park development in Ward 12.", "dept": "Urban Development Department", "state": "Tamil Nadu"})
@@ -256,7 +225,7 @@ st.markdown("<p style='text-align: center; color: #00c6ff; margin-bottom: 30px; 
 
 with st.form("input_form"):
     st.markdown("### 📝 Application Details")
-    info_needed = st.text_area("Detailed Information Required", value=info_val, height=100, placeholder="Describe the official documents, budgets, or public records you are seeking...")
+    info_needed = st.text_area("Detailed Information Required", value=info_val, height=100, placeholder="Describe official documents, budgets, or public records...")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -273,6 +242,10 @@ if submitted:
     else:
         stable_id = db.save_initial_input(info_needed, dept, state)
         st.session_state['current_id'] = stable_id
+        # Reset portal session flags for new request
+        st.session_state['portal_step'] = 1
+        st.session_state['c1'] = generate_random_captcha()
+        st.session_state['c2'] = generate_random_captcha()
         
         with st.spinner("🧠 AI evaluating legal rules & Section 8(1)(j) privacy clauses..."):
             decision = run_decision_rules(info_needed, dept, state)
@@ -282,7 +255,7 @@ if submitted:
         st.rerun()
 
 # ==========================================
-# 6. OUTPUT & DASHBOARD RESULTS
+# 6. OUTPUT & EMBEDDED PORTAL FILING FLOW
 # ==========================================
 if 'current_id' in st.session_state:
     req = db.get_request(st.session_state['current_id'])
@@ -315,15 +288,67 @@ if 'current_id' in st.session_state:
             
             with colB:
                 if req['status'] == "Pending_Approval":
-                    if st.button("🤖 Approve, Solve CAPTCHA & Pay Rs 10", type="primary", use_container_width=True):
-                        with st.spinner("Launching Automation Gateway (Solving CAPTCHA & Verifying Payment)..."):
-                            result = file_rti_on_mock_portal(req['mapped_authority'], req['drafted_text'])
-                            
-                            if "error" in result:
-                                st.error(f"Automation failed: {result['error']}")
-                            else:
-                                db.update_final_result(req['stable_id'], result['registration_number'], result['deadline'], result['target_url'])
+                    if st.button("🏛️ Open Portal Gateway & File", type="primary", use_container_width=True):
+                        st.session_state['show_portal'] = True
+                        st.rerun()
+
+        # EMBEDDED GOVERNMENT PORTAL SIMULATION (Opens directly on the current page!)
+        if req['status'] == "Pending_Approval" and st.session_state.get('show_portal', False):
+            st.markdown("---")
+            with st.container(border=True):
+                st.markdown("### 🌐 Official Portal Filing Gateway (Secure Session)")
+                
+                # Initialize CAPTCHAs in session state if not present
+                if 'c1' not in st.session_state:
+                    st.session_state['c1'] = generate_random_captcha()
+                if 'c2' not in st.session_state:
+                    st.session_state['c2'] = generate_random_captcha()
+                if 'portal_step' not in st.session_state:
+                    st.session_state['portal_step'] = 1
+
+                step = st.session_state['portal_step']
+
+                if step == 1:
+                    st.markdown("#### **Step 1 of 2: Department & Initial Security Check**")
+                    st.info(f"Target Authority: **{req['mapped_authority']}**")
+                    
+                    user_c1 = st.text_input("Enter CAPTCHA Code shown below:", key="input_c1")
+                    st.markdown(f"<div class='captcha-display'>{st.session_state['c1']}</div>", unsafe_allow_html=True)
+                    
+                    if st.button("Verify & Proceed to Payment ➡️"):
+                        if user_c1.strip().upper() == st.session_state['c1']:
+                            st.success("✅ CAPTCHA 1 Verified Successfully!")
+                            st.session_state['portal_step'] = 2
+                            st.rerun()
+                        else:
+                            st.error("❌ Invalid CAPTCHA Code! Generating new code...")
+                            st.session_state['c1'] = generate_random_captcha()
+                            st.rerun()
+
+                elif step == 2:
+                    st.markdown("#### **Step 2 of 2: Fee Payment & Final Verification**")
+                    st.write("Application Fee: **₹ 10.00** (Standard under RTI Act 2005)")
+                    
+                    user_c2 = st.text_input("Enter Final Payment CAPTCHA Code:", key="input_c2")
+                    st.markdown(f"<div class='captcha-display'>{st.session_state['c2']}</div>", unsafe_allow_html=True)
+                    
+                    col_p1, col_p2 = st.columns(2)
+                    with col_p1:
+                        if st.button("🔒 Pay ₹10 & Submit RTI"):
+                            if user_c2.strip().upper() == st.session_state['c2']:
+                                reg_id = f"RTI-GOV-2026-{random.randint(1000, 9999)}"
+                                db.update_final_result(req['stable_id'], reg_id, "30 Days (Standard under RTI Act 2005)", "https://rtionline.gov.in (Embedded Gateway)")
+                                st.session_state['show_portal'] = False
+                                st.success("🎉 Filing Complete!")
                                 st.rerun()
+                            else:
+                                st.error("❌ Invalid Payment CAPTCHA! Generating new code...")
+                                st.session_state['c2'] = generate_random_captcha()
+                                st.rerun()
+                    with col_p2:
+                        if st.button("❌ Cancel / Close"):
+                            st.session_state['show_portal'] = False
+                            st.rerun()
 
         if req['status'] == "Filed":
             st.balloons()
