@@ -1,15 +1,20 @@
 import os
 import time
 from pydantic import BaseModel, Field
-from google import genai
-from google.genai import types
+from groq import Groq
+from dotenv import load_dotenv
 
+# Automatically load API keys from a local .env file if present
+load_dotenv()
+
+# --- 1. Define the Required Output Structure ---
 class AgentDecision(BaseModel):
     category: str = Field(description="Must be exactly one of: 'RTI', 'Grievance', or 'PII_Violation'")
     public_authority: str | None = Field(default=None, description="Formal name of authority if RTI.")
     draft_text: str | None = Field(default=None, description="Draft RTI application text if RTI.")
     reasoning: str = Field(description="Evidence and reasoning behind the decision.")
 
+# --- 2. Fallback Rule Engine ---
 def local_fallback_classifier(info_needed: str, dept: str, state: str) -> AgentDecision:
     text_lower = info_needed.lower()
     
@@ -54,44 +59,67 @@ def local_fallback_classifier(info_needed: str, dept: str, state: str) -> AgentD
             reasoning="[Fallback Rule Engine] Request targets official information/public records. Mapped to valid RTI framework."
         )
 
+# --- 3. Main Decision Engine with Groq API ---
 def run_decision_rules(info_needed: str, dept: str, state: str) -> AgentDecision:
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GROQ_API_KEY")
     
-    if api_key:
-        try:
-            client = genai.Client(
-                api_key=api_key,
-                http_options=types.HttpOptions(timeout=20000)
-            )
-            
-            prompt = f"""
-            You are an expert Indian Governance and Legal AI Assistant specializing in the RTI Act 2005, Public Grievances, and Data Privacy under Section 8(1)(j).
-            
-            Analyze this citizen request across any department or state:
-            - Info Requested: "{info_needed}"
-            - Department: "{dept}"
-            - State: "{state}"
-            
-            Classification Guidelines:
-            1. "RTI": Choose this if asking for public records, government files, budgets, spending, tenders, policies, or official data under Section 2(j). Map the formal public authority and generate an RTI draft application under Section 6(1).
-            2. "Grievance": Choose this if asking for service execution, direct repairs, or complaint resolution where no official record is primarily sought.
-            3. "PII_Violation": Choose this if asking for third-party personal data or private information exempted under Section 8(1)(j).
-            """
-            
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=AgentDecision,
-                    temperature=0.1,
-                ),
-            )
-            return AgentDecision.model_validate_json(response.text)
-            
-        except Exception as e:
-            print(f"⚠️ API call skipped/failed ({e}). Executing local rule engine...")
-            return local_fallback_classifier(info_needed, dept, state)
-    else:
-        print("⚠️ GEMINI_API_KEY not found. Running local rule engine...")
+    if not api_key:
+        print("⚠️ GROQ_API_KEY not found in environment variables. Running local rule engine...")
         return local_fallback_classifier(info_needed, dept, state)
+    
+    try:
+        # Initialize Groq client cleanly without deprecated timeout kwargs
+        client = Groq(api_key=api_key)
+        
+        prompt = f"""
+        You are an expert Indian Governance and Legal AI Assistant specializing in the RTI Act 2005, Public Grievances, and Data Privacy under Section 8(1)(j).
+        
+        Analyze this citizen request across any department or state:
+        - Info Requested: "{info_needed}"
+        - Department: "{dept}"
+        - State: "{state}"
+        
+        Classification Guidelines:
+        1. "RTI": Choose this if asking for public records, government files, budgets, spending, tenders, policies, or official data under Section 2(j). Map the formal public authority and generate an RTI draft application under Section 6(1).
+        2. "Grievance": Choose this if asking for service execution, direct repairs, or complaint resolution where no official record is primarily sought.
+        3. "PII_Violation": Choose this if asking for third-party personal data or private information exempted under Section 8(1)(j).
+        
+        You MUST return the output STRICTLY as a JSON object matching this schema:
+        {{
+            "category": "RTI" | "Grievance" | "PII_Violation",
+            "public_authority": "Formal name of authority or null",
+            "draft_text": "Draft RTI application text or null",
+            "reasoning": "Evidence and reasoning behind the decision."
+        }}
+        """
+        
+        response = client.chat.completions.create(
+            model='openai/gpt-oss-120b',
+            messages=[
+                {"role": "system", "content": "You are an expert Indian Legal AI Assistant outputting strictly valid JSON matching the requested schema."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.1,
+        )
+        
+        response_json_str = response.choices[0].message.content
+        return AgentDecision.model_validate_json(response_json_str)
+        
+    except Exception as e:
+        print(f"⚠️ Groq API connection failed with error: {e}")
+        print("🔄 Falling back to local rule engine...")
+        return local_fallback_classifier(info_needed, dept, state)
+
+# --- 4. Direct Terminal Tester ---
+if __name__ == "__main__":
+    print("Testing Decision Engine with Groq...")
+    result = run_decision_rules(
+        info_needed="Request for road repair spending on MG Road for FY2025.",
+        dept="Public Works Department",
+        state="Karnataka"
+    )
+    print("\nRESULT:")
+    print(f"Category: {result.category}")
+    print(f"Authority: {result.public_authority}")
+    print(f"Reasoning: {result.reasoning}")
