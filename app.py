@@ -131,7 +131,7 @@ def render_home_page():
     """)
     col1, col2, col3 = st.columns([1, 0.45, 1])
     with col2:
-        if st.button("File an RTI Request →", type="primary", width='stretch'):
+        if st.button("File an RTI Request →", type="primary", use_container_width=True):
             navigate('login')
     st.html("""
     <div style="display: flex; justify-content: center; gap: 30px; margin-top: 60px; color: #64748b; font-size: 0.9rem; font-weight: 500;">
@@ -162,7 +162,7 @@ def render_login_page():
                 with st.form("citizen_login"):
                     c_user = st.text_input("Email / User ID", placeholder="e.g., citizen01")
                     c_pass = st.text_input("Password", type="password", placeholder="••••••••")
-                    if st.form_submit_button("Sign In →", type="primary", width='stretch'):
+                    if st.form_submit_button("Sign In →", type="primary", use_container_width=True):
                         if c_user == "citizen01" and c_pass == "RTI@2026":
                             st.session_state['logged_in'] = True
                             st.session_state['role'] = "citizen"
@@ -174,7 +174,7 @@ def render_login_page():
                 with st.form("admin_login"):
                     a_user = st.text_input("Officer ID", placeholder="Admin ID")
                     a_pass = st.text_input("Password", type="password", placeholder="••••••••")
-                    if st.form_submit_button("Sign In →", type="primary", width='stretch'):
+                    if st.form_submit_button("Sign In →", type="primary", use_container_width=True):
                         if a_user == "gov_admin_99" and a_pass == "SecureRoot@2026":
                             st.session_state['logged_in'] = True
                             st.session_state['role'] = "admin"
@@ -219,7 +219,7 @@ def render_citizen_dashboard():
         c1, c2 = st.columns(2)
         dept = c1.text_input("Target Department", key="dept_input", placeholder="e.g., Public Works Department")
         state = c2.text_input("State", key="state_input", placeholder="e.g., Karnataka")
-        submitted = st.form_submit_button("🚀 Run AI Analysis & Draft", type="primary", width='stretch')
+        submitted = st.form_submit_button("🚀 Run AI Analysis & Draft", type="primary", use_container_width=True)
 
     if submitted:
         if len(info_needed.strip()) < 10:
@@ -264,10 +264,10 @@ def render_citizen_dashboard():
                 colA, colB = st.columns([1, 1])
                 with colA:
                     pdf_bytes = generate_rti_pdf(req['mapped_authority'], req['drafted_text'], req['stable_id'])
-                    st.download_button("📄 Download Formatted PDF", data=pdf_bytes, file_name=f"RTI_{req['stable_id']}.pdf", mime="application/pdf", width='stretch', type="primary")
+                    st.download_button("📄 Download Formatted PDF", data=pdf_bytes, file_name=f"RTI_{req['stable_id']}.pdf", mime="application/pdf", use_container_width=True, type="primary")
                 with colB:
                     if req['status'] == "Pending_Approval":
-                        if st.button("🏛️ Open Portal Gateway & File", type="primary", width='stretch'):
+                        if st.button("🏛️ Open Portal Gateway & File", type="primary", use_container_width=True):
                             st.session_state['show_portal'] = True
                             st.rerun()
 
